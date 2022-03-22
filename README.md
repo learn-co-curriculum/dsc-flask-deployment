@@ -31,10 +31,6 @@ The model file has already been included in this repository as `model.pkl`:
 ! ls
 ```
 
-    CONTRIBUTING.md README.md       app.py          model.pkl
-    LICENSE.md      [34m__pycache__[m[m     index.ipynb
-
-
 We'll also be reusing this code from the cloud function:
 
 ```python
@@ -387,7 +383,7 @@ response.json()
 
 
 
-That's it! **Go ahead and shut down the server again.**
+That's it! **Go ahead and shut down the server again using control-C.**
 
 #### Requirements Files
 
@@ -402,7 +398,7 @@ All of these files are already located in this repository, but we'll explain how
 Our `runtime.txt` looks like this:
 
 ```
-python-3.8
+python-3.8.13
 ```
 
 This is because we are running Python 3.8 in this conda environment. If you get an error about the "runtime" when trying to deploy with Heroku, it's possible that this version of Python is no longer supported. Look at the [supported runtimes](https://devcenter.heroku.com/articles/python-support#supported-runtimes) list to find other options.
@@ -440,7 +436,77 @@ Once connected, a text box should appear where you can search for the repository
 
 Scroll down to **Manual deploy**, choose the appropriate branch, and click **Deploy Branch**.
 
+If everything goes smoothly, you should see a build log, then the message **Your app was successfully deployed.** Then if you click the **View** button, that should open the "Hello, World!" page in a new browser tab.
+
+In the cell below, replace the value of `base_url` with your actual Heroku app URL.
+
 
 ```python
-
+# base URL (ending with .herokuapp.com, no trailing /)
+base_url = ""
+response = requests.post(
+    url=f"{base_url}/predict",
+    json={"sepal_length": 5.1, "sepal_width": 3.5, "petal_length": 1.4, "petal_width": 0.2}
+)
+response.json()
 ```
+
+### Troubleshooting Workflow on Heroku
+
+Especially because the [supported runtimes](https://devcenter.heroku.com/articles/python-support#supported-runtimes) list changes very frequently, it's likely that your deployment won't succeed on the first try. That's ok!
+
+#### Identifying the Problem
+
+**First make sure that the code works on your local computer.** It is MUCH easier to debug when working locally vs. working on a cloud service like Heroku!
+
+**Then make sure you read the error message** to understand what is going on and why:
+
+* Are any of the necessary files missing? Double-check that you used Git to add, commit, and push all of the relevant pieces:
+  * `runtime.txt`: the Python version
+  * `Procfile`: the terminal command for Heroku to run
+  * `requirements.txt`: the Python package requirements
+  * `app.py`: the actual Flask app source code
+  * `model.pkl`: the pickled model file
+* If the error message mentions the "runtime", you probably need to review the list of supported runtimes and modify `runtime.txt` so that it reflects the new version
+* If the error message happens during the `pip install` step, that might mean that one of the packages you're using is no longer available from the Python Package Index (the source where `pip` installs things from). Go to [https://pypi.org/](https://pypi.org/) to research the packages you are trying to use, make a new `conda` environment locally, and try installing the packages one by one until you have a working `requirements.txt` file.
+* If the error message happens when you're actually trying to view a page or run `requests.post`, most likely you didn't include all of the requirements in `requirements.txt`. You can run `pip freeze` in the terminal to see all of the packages you're using locally
+* If the build logs aren't giving you enough information, go to **More** --> **View logs** to see the logs from the actual application running. This will give you information about the incoming requests.
+
+#### Updating the Source Code on Heroku
+
+First, use Git to add, commit, and push your changes to GitHub. Then go back to the **Deploy** tab, scroll to the bottom, and click **Deploy Branch**. Then wait to see if you get the "Your app was successfully deployed" message, and repeat the "Identifying the Problem" steps as needed.
+
+You can also enable automatic deploys if you want to, but we tend to find that the manual process is easier to debug.
+
+## Level Up
+
+Currently we are mainly using Flask to serve JSON content, but Flask is also a web server that can serve HTML!
+
+If you are comfortable writing HTML, try modifying the `/` route so that it displays useful information, e.g. explaining how to call the API and make a prediction.
+
+You can write multi-line HTML directly within `app.py` using a triple-quoted Python string like this:
+
+```python
+@app.route('/', methods=['GET'])
+def index():
+    return """
+    <h1>API Documentation</h1>
+    <p>
+      Paragraph of text here
+    </p>
+    """    
+```
+
+Alternatively, you can create a `static` folder containing a file called `index.html`, then re-write the `/` route so it looks like this:
+
+```python
+from flask import send_from_directory
+
+@app.route('/', methods=['GET'])
+def index():
+    return send_from_directory("static", "index.html")
+```
+
+## Summary
+
+That's it! You have now learned about how to incorporate a cloud function into a Flask app, and how to deploy that Flask app on Heroku!
